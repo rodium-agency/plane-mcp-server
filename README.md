@@ -1,5 +1,22 @@
 # Plane MCP Server
 
+## Rodium
+
+This fork of [makeplane/plane-mcp-server](https://github.com/makeplane/plane-mcp-server) lets an agent manage working time spent in each state:
+
+- `project update` accepts `state_time_tracking`, `state_time_start`, `state_time_end` and `state_time_days`. Only a project admin, or a workspace admin who is a member of the project, can change them.
+- `workitem_activity state_durations` reads the cumulative working time for each state a work item has left.
+
+It depends on the Rodium fork of `plane-sdk` (`rodium-agency/plane-python-sdk`, branch `feat/state-time`), not on the package published to PyPI.
+
+Upstream changes are not applied automatically. To resynchronize:
+
+```bash
+git remote add upstream https://github.com/makeplane/plane-mcp-server.git
+git fetch upstream
+git rebase upstream/main
+```
+
 A [Model Context Protocol](https://modelcontextprotocol.io) server for
 [Plane](https://plane.so). Gives an AI agent tools to read and manage projects,
 work items, cycles, modules, releases, customers and more.

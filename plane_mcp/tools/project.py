@@ -70,6 +70,10 @@ ACTIONS = (
             "is_time_tracking_enabled",
             "external_source",
             "external_id",
+            "state_time_tracking",
+            "state_time_start",
+            "state_time_end",
+            "state_time_days",
         ),
         note="only the fields you pass are changed",
     ),
@@ -100,7 +104,11 @@ ACTIONS = (
 FOOTER = (
     "identifier is the short work item prefix, such as ENG. network is 0 for secret or 2 for public. "
     "project_lead and default_assignee are member ids -- get them from `member list_workspace`. "
-    "Feature toggles are booleans; omitted ones are left as they are."
+    "Feature toggles are booleans; omitted ones are left as they are. "
+    "state_time_tracking shows cumulative working time on each state change. "
+    "Only a project admin, or a workspace admin who is a member of the project, can change it. "
+    "state_time_start and state_time_end are HH:MM:SS, and the start must be strictly before the end. "
+    "state_time_days lists weekdays from 0 (Monday) to 6 (Sunday); at least one day is required while tracking is on."
 )
 
 LEGACY = {
@@ -168,6 +176,10 @@ def register(mcp: FastMCP) -> None:
         project_updates: bool | None = None,
         workflows: bool | None = None,
         is_time_tracking_enabled: bool | None = None,
+        state_time_tracking: bool | None = None,
+        state_time_start: str = "",
+        state_time_end: str = "",
+        state_time_days: list[int] | None = None,
         cursor: str = "",
         per_page: int = 0,
         order_by: str = "",
@@ -261,6 +273,10 @@ def register(mcp: FastMCP) -> None:
                     is_time_tracking_enabled=is_time_tracking_enabled,
                     default_state=opt(default_state),
                     estimate=opt(estimate),
+                    state_time_tracking=state_time_tracking,
+                    state_time_start=opt(state_time_start),
+                    state_time_end=opt(state_time_end),
+                    state_time_days=state_time_days,
                 ),
             )
 

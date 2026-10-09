@@ -5,7 +5,11 @@ from __future__ import annotations
 from typing import Any, Literal
 
 from fastmcp import FastMCP
-from plane.models.work_items import PaginatedWorkItemActivityResponse, WorkItemActivity
+from plane.models.work_items import (
+    PaginatedWorkItemActivityResponse,
+    WorkItemActivity,
+    WorkItemStateDurations,
+)
 
 from plane_mcp.client import get_plane_client_context
 from plane_mcp.toolkit import Action, build_annotations, build_description, envelope, missing, needs, page_params
@@ -16,6 +20,12 @@ TITLE = "Work item activity"
 ACTIONS = (
     Action("list", ("project_id", "workitem_id"), ("cursor", "per_page"), read=True),
     Action("retrieve", ("project_id", "workitem_id", "activity_id"), read=True),
+    Action(
+        "state_durations",
+        ("project_id", "workitem_id"),
+        read=True,
+        note="cumulative working time spent in each state the work item left",
+    ),
 )
 
 LEGACY = {
@@ -31,17 +41,24 @@ def register(mcp: FastMCP) -> None:
         annotations=build_annotations(TITLE, ACTIONS),
     )
     def workitem_activity(
-        action: Literal["list", "retrieve"],
+        action: Literal["list", "retrieve", "state_durations"],
         project_id: str = "",
         workitem_id: str = "",
         activity_id: str = "",
         cursor: str = "",
         per_page: int = 0,
-    ) -> WorkItemActivity | dict[str, Any] | str:
+    ) -> WorkItemActivity | WorkItemStateDurations | dict[str, Any] | str:
         client, workspace_slug = get_plane_client_context()
 
         if error := needs(action, project_id=project_id, workitem_id=workitem_id):
             return error
+
+        if action == "state_durations":
+            return client.work_items.activities.state_durations(
+                workspace_slug=workspace_slug,
+                project_id=project_id,
+                work_item_id=workitem_id,
+            )
 
         if action == "list":
             response: PaginatedWorkItemActivityResponse = client.work_items.activities.list(
