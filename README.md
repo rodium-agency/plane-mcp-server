@@ -6,6 +6,7 @@ This fork of [makeplane/plane-mcp-server](https://github.com/makeplane/plane-mcp
 
 - `project update` accepts `state_time_tracking`, `state_time_start`, `state_time_end` and `state_time_days`. Only a project admin, or a workspace admin who is a member of the project, can change them.
 - `workitem_activity state_durations` reads the cumulative working time for each state a work item has left.
+- `workitem_subscriber` lists, adds and removes who follows a work item, and lists or clears a user's subscriptions in the workspace. An explicit unsubscribe is kept: a later assignment does not subscribe them again. Mentions still notify.
 
 It depends on the Rodium fork of `plane-sdk` (`rodium-agency/plane-python-sdk`, branch `feat/state-time`), not on the package published to PyPI.
 

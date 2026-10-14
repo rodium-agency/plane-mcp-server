@@ -934,7 +934,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "plane-sdk"
 version = "0.3.1"
-source = { git = "https://github.com/rodium-agency/plane-python-sdk?rev=feat%2Fstate-time#7afbb745c72e206457ab942d6c0d5d0a8f7d7b8d" }
+source = { git = "https://github.com/rodium-agency/plane-python-sdk?rev=feat%2Fstate-time#df3c56ce67b980b02c772c04e5e7c6c8383f566d" }
 dependencies = [
     { name = "pydantic" },
     { name = "requests" },
