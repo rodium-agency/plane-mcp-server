@@ -60,6 +60,7 @@ CONDITIONAL: dict[tuple[str, str], dict[str, object]] = {
     ("project_estimate", "create_points"): {"points": '[{"value": "1", "key": 0}]'},
     ("customer", "delete"): {"customer_id": "id-1"},
     ("customer", "manage_workitems"): {"link_ids": "id-1"},
+    ("customer", "update_access"): {"access_revoked": False},
     ("customer_property", "set_values"): {"values": '{"prop-1": ["Enterprise"]}'},
     ("release", "update_changelog"): {"description_html": "<p>notes</p>"},
     ("release", "manage_workitems"): {"add_ids": "id-1"},
