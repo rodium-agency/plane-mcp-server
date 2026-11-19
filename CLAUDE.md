@@ -56,6 +56,7 @@ Ordered as registered; the earlier one wraps the later:
 | `PlaneLoggingMiddleware` | structured logging, plus the tool name |
 | `CoerceArguments` | repairs arguments a client encoded as strings, before validation (`coercion.py`) |
 | `ValidateActionArguments` | refuses a call with no `action`, and arguments the chosen action does not accept, from the `ACTIONS` declaration |
+| `CompactResults` | sends each result once, as compact JSON text: no `structuredContent` duplicate, no null fields (except ones named in `fields`), never `description_binary` |
 
 
 A dispatch tool's name is not its operation, so `PlaneLoggingMiddleware` adds `resource` and `action` to every `tools/call` record — start, success and error alike, where previously only success and error carried anything. For a retired name both are resolved through the alias table, since it carries no `action` of its own.
@@ -72,6 +73,8 @@ Coercion runs before validation so an argument is judged by the value it repairs
 
 ### Client Context (`client.py`)
 
+Clients are cached per credential (`_client_for`, an LRU of 256): a `PlaneClient` holds a `requests.Session` per resource, and reusing it is what reuses the pooled HTTP connection instead of paying a TCP and TLS handshake on every tool call.
+
 `get_plane_client_context()` returns a `PlaneClientContext(client, workspace_slug)` namedtuple. It resolves credentials from the MCP request context (OAuth token or header API key) or from environment variables (stdio mode). Prefers `PLANE_INTERNAL_BASE_URL` for server-to-server calls.
 
 ### Authentication (`auth/`)
@@ -81,7 +84,7 @@ Coercion runs before validation so an argument is judged by the value it repairs
 
 ### Tools (`tools/`)
 
-One action-dispatch tool per Plane resource: **31 tools, 221 actions, ~70k chars advertised**. `tools/__init__.py` re-exports `register_tools`, so `server.py` and `__main__.py` see a single entry point.
+One action-dispatch tool per Plane resource: **31 tools, 221 actions, ~65k chars advertised**. `tools/__init__.py` re-exports `register_tools`, so `server.py` and `__main__.py` see a single entry point.
 
 One module per resource, each exporting `NAME`, `ACTIONS`, `LEGACY` and `register(mcp)`. `ACTIONS` is the single source of truth: the tool description and its `ToolAnnotations` are generated from it, and the conformance suite asserts they agree with the function signature. See `tools/README.md` for the full convention.
 
@@ -104,9 +107,10 @@ Shared building blocks for the tool surface, split by *when* they act:
 | `spec.py` | declaration | `Action`, `build_description`, `build_annotations` |
 | `runtime.py` | call | `missing`, `needs`, `require`, `one_of`, `opt`, `coerce_list`, `page_params`, `as_params`, `ids_of` |
 | `mentions.py` | call | `render_mentions`, `tokenize_mentions`, `mention_user_ids`, `project_mention_error` |
-| `paging.py` | response | `envelope`, `dump_results`, `pql_failure`, `workitem_page` |
+| `paging.py` | response | `envelope`, `dump_results`, `pql_failure`, `workitem_page`, `workitem_list_fields` |
+| `compact.py` | response | `compact`, `requested_fields` — drop nulls and `description_binary` from a result |
 | `governance.py` | policy | `workspace_owns_resource`, `GOVERNED_BY`, `workspace_owns`, `migration_in_progress`, `plan_gated` |
-| `transforms.py` | listing | `StripOutputSchemas` |
+| `transforms.py` | listing | `StripOutputSchemas`, `StripEmptyDefaults` |
 
 Governance, plan gates and the rest of the toolkit conventions are documented in `plane_mcp/toolkit/README.md`, including what adding a newly governed resource takes.
 

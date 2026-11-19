@@ -8,7 +8,7 @@ workitem(action="list", project_id=..., pql='state__group = "started"')
 cycle(action="archive", project_id=..., cycle_id=...)
 ```
 
-A compact catalogue — 31 tools, ~70k characters — loads fully in every MCP client and leaves the context budget to the conversation.
+A compact catalogue — 31 tools, ~65k characters — loads fully in every MCP client and leaves the context budget to the conversation.
 
 Five parts, in this order:
 
@@ -69,7 +69,14 @@ Both implement `list_tools`/`get_tool` only, so execution keeps the full schema 
 | Transform | Effect |
 |---|---|
 | `StripOutputSchemas` | Drops `outputSchema` from the listing — roughly two-thirds of the wire payload, for a field no client forwards to a model |
+| `StripEmptyDefaults` | Drops `"default": ""`, `0`, `false`, `null` and `[]` from parameters — an omitted optional parameter already means "not given" |
 | `LegacyNames` | Resolves a retired tool name to its `(tool, action)` pair, with `action` hidden and pre-filled |
+
+## Responses
+
+Every result reaches the agent as one compact JSON text block (`CompactResults` in `plane_mcp/middleware.py`): FastMCP's `structuredContent` duplicate is dropped, null fields are left out unless the caller named them in `fields`, and `description_binary` is never returned.
+
+Work item lists — `workitem list`/`list_archived`, `cycle list_workitems`, `module list_workitems` — return `id,sequence_id,name,state,priority,assignees,labels,project,parent` unless `fields` names others; `fields="*"` returns every field. `retrieve` is never narrowed: it is how a caller reads a description.
 
 ## Retired tool names
 
@@ -113,7 +120,7 @@ Where the workspace owns a resource outright, both directions of wrong-scope wri
 | `template` | `list` · `create` · `update` · `delete` |
 | `work_log` | `list` · `create` · `update` · `delete` |
 | `workitem` | `list` · `list_archived` · `retrieve` · `retrieve_by_identifier` · `search` · `count` · `create` · `update` · `delete` · `archive` · `manage_assignee` · `manage_label` |
-| `workitem_activity` | `list` · `retrieve` |
+| `workitem_activity` | `list` · `retrieve` · `state_durations` |
 | `workitem_attachment` | `list` · `read` · `download_url` · `upload_from_url` · `delete` |
 | `workitem_comment` | `list` · `retrieve` · `create` · `update` · `delete` |
 | `workitem_link` | `list` · `retrieve` · `create` · `update` · `delete` |

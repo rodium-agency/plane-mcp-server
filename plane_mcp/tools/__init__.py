@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastmcp import FastMCP
 from fastmcp.utilities.logging import get_logger
 
-from plane_mcp.toolkit import StripOutputSchemas
+from plane_mcp.toolkit import StripEmptyDefaults, StripOutputSchemas
 from plane_mcp.tools.legacy import LegacyNames
 
 logger = get_logger(__name__)
@@ -22,6 +22,7 @@ def register_tools(mcp: FastMCP, *, legacy_names: bool = True) -> int:
         mod.register(mcp)
 
     mcp.add_transform(StripOutputSchemas())
+    mcp.add_transform(StripEmptyDefaults())
     if legacy_names:
         mcp.add_transform(LegacyNames(alias_table()))
 
