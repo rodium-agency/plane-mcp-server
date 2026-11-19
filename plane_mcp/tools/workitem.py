@@ -31,6 +31,7 @@ from pydantic import Field
 from plane_mcp.client import get_plane_client_context
 from plane_mcp.pql_reference import PQL_FIELD_HINT
 from plane_mcp.toolkit import (
+    LIST_FIELDS_HINT,
     Action,
     build_annotations,
     build_description,
@@ -42,6 +43,7 @@ from plane_mcp.toolkit import (
     opt,
     pql_failure,
     rich_text,
+    workitem_list_fields,
 )
 
 logger = get_logger(__name__)
@@ -150,7 +152,7 @@ FOOTER = (
     "To clear a field on update: assignees=[] or labels=[], and start_date=null or "
     "target_date=null. A field you leave out is not changed.\n"
     "fields is a sparse fieldset: use `project`, not project_id, and `description_html`, not "
-    "description.\n"
+    f"description. {LIST_FIELDS_HINT}.\n"
     f"count group_by and sub_group_by accept: {', '.join(GROUP_BY_VALUES)}. These are grouping "
     "keys only -- they are not PQL filter fields, and filtering on state__group is rejected."
 )
@@ -281,13 +283,14 @@ def register(mcp: FastMCP) -> None:
         if action in ("list", "list_archived"):
             if action == "list_archived" and not project_id:
                 return missing(action, "project_id")
+            list_fields = workitem_list_fields(fields)
             params = WorkItemQueryParams(
                 pql=opt(pql),
                 order_by=opt(order_by),
                 per_page=opt(per_page),
                 cursor=opt(cursor),
                 expand=opt(expand),
-                fields=opt(fields),
+                fields=list_fields,
                 external_id=opt(external_id),
                 external_source=opt(external_source),
             )
@@ -307,7 +310,7 @@ def register(mcp: FastMCP) -> None:
                 if failure:
                     return failure
                 raise
-            return envelope(response, opt(fields))
+            return envelope(response, list_fields)
 
         if action == "count":
             scoped = _scoped_pql(pql, project_id)
