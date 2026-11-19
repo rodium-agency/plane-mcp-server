@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Collection
 from typing import Any
 
@@ -9,8 +10,10 @@ from fastmcp.server.middleware import Middleware, MiddlewareContext
 from fastmcp.server.middleware.logging import StructuredLoggingMiddleware
 from fastmcp.tools.tool import ToolResult
 from fastmcp.utilities.logging import get_logger
+from mcp.types import TextContent
 
 from plane_mcp.coercion import coerce_arguments
+from plane_mcp.toolkit.compact import compact, requested_fields
 from plane_mcp.tools.registry import action_arguments, alias_table
 
 logger = get_logger(__name__)
@@ -65,6 +68,44 @@ class ValidateActionArguments(Middleware):
             # the permitted set, and a second opinion here would only muddle it.
             return None
         return stray_argument_error(action, arguments, by_action[action])
+
+
+class CompactResults(Middleware):
+    """Return each tool result once, as compact JSON text, without nulls or binary blobs.
+
+    FastMCP answers a dict result with the same payload twice -- serialised into
+    a text block and again as `structuredContent` -- and a client that forwards
+    both to the model doubles what every call costs. The listing already drops
+    `outputSchema` (`StripOutputSchemas`), so no client is promised structured
+    content; the text block alone is what the MCP spec asks every tool to send.
+
+    The payload is then compacted (`plane_mcp.toolkit.compact`): null fields go,
+    except those the caller named in `fields`, and `description_binary` never
+    leaves the server.
+
+    A result without structured content -- a refusal from an earlier middleware,
+    an image -- is passed through untouched.
+    """
+
+    async def on_call_tool(self, context: MiddlewareContext, call_next):
+        result = await call_next(context)
+        if not isinstance(result, ToolResult) or result.structured_content is None:
+            return result
+        arguments = getattr(context.message, "arguments", None) or {}
+        return compact_result(result, requested_fields(arguments.get("fields")))
+
+
+def compact_result(result: ToolResult, keep: Collection[str] = frozenset()) -> ToolResult:
+    """`result` as one compact text block, its structured duplicate dropped."""
+    data = result.structured_content
+    if (result.meta or {}).get("fastmcp", {}).get("wrap_result"):
+        # A non-object return value, wrapped by FastMCP as {"result": value}.
+        data = data.get("result")
+    data = compact(data, keep)
+    if data is None:
+        return ToolResult(content=[])
+    text = data if isinstance(data, str) else json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return ToolResult(content=[TextContent(type="text", text=text)])
 
 
 class CoerceArguments(Middleware):

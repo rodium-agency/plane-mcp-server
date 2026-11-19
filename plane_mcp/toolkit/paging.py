@@ -22,6 +22,32 @@ from plane_mcp.toolkit.runtime import opt
 logger = get_logger(__name__)
 
 
+# What a work item list returns when the caller names no `fields`. A list is
+# for finding work items, not reading them: the description alone is often
+# larger than everything else in the record, and a page carries up to a hundred
+# of them. `project` is here because a workspace-wide list spans projects and
+# every follow-up call needs it.
+DEFAULT_WORKITEM_LIST_FIELDS = "id,sequence_id,name,state,priority,assignees,labels,project,parent"
+
+# `fields` value asking for every field, as the API returns it.
+ALL_FIELDS = "*"
+
+LIST_FIELDS_HINT = (
+    f"list results carry only {DEFAULT_WORKITEM_LIST_FIELDS} unless fields names others; "
+    f'fields="{ALL_FIELDS}" returns every field'
+)
+
+
+def workitem_list_fields(fields: str) -> str | None:
+    """The `fields` to send for a work item list: the light default, the caller's own, or all."""
+    fields = (fields or "").strip()
+    if not fields:
+        return DEFAULT_WORKITEM_LIST_FIELDS
+    if fields == ALL_FIELDS:
+        return None
+    return fields
+
+
 def dump_results(items: Any, fields: str | None) -> list[Any]:
     """Serialise a page, honouring `fields` as a sparse fieldset.
 
@@ -90,6 +116,7 @@ def workitem_page(
     **target: Any,
 ) -> dict[str, Any]:
     """One page of the work items belonging to a parent record."""
+    selected = workitem_list_fields(fields)
     try:
         response = method(
             **target,
@@ -99,7 +126,7 @@ def workitem_page(
                 per_page=opt(per_page),
                 cursor=opt(cursor),
                 expand=opt(expand),
-                fields=opt(fields),
+                fields=selected,
             ),
         )
     except HttpError as exc:
@@ -107,7 +134,7 @@ def workitem_page(
         if failure is None:
             raise
         return failure
-    return envelope(response, opt(fields))
+    return envelope(response, selected)
 
 
 def pql_failure(tool: str, action: str, pql: str, exc: HttpError) -> dict[str, Any] | None:

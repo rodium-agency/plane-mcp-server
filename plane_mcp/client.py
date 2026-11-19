@@ -1,6 +1,7 @@
 """Plane client initialization for MCP server."""
 
 import os
+from functools import lru_cache
 from typing import Any, NamedTuple
 
 from fastmcp.server.auth.auth import AccessToken
@@ -44,6 +45,23 @@ def current_workspace() -> dict[str, Any]:
     }
 
 
+# One client per credential, kept across calls. A PlaneClient holds a
+# requests.Session per resource -- 81 of them -- and a Session is what keeps a
+# connection alive. Building a fresh client on every tool call threw all of that
+# away, so every call paid a new TCP and TLS handshake to the Plane API before
+# its request could even be sent. Reusing the client reuses the pooled
+# connection. Bounded, because OAuth tokens rotate and each one is a new key.
+CLIENT_CACHE_SIZE = 256
+
+
+@lru_cache(maxsize=CLIENT_CACHE_SIZE)
+def _client_for(base_url: str, api_key: str, access_token: str) -> PlaneClient:
+    """The shared client for one credential against one Plane API."""
+    if access_token:
+        return PlaneClient(base_url=base_url, access_token=access_token)
+    return PlaneClient(base_url=base_url, api_key=api_key)
+
+
 def get_plane_client_context() -> PlaneClientContext:
     """
     Initialize and return a PlaneClient instance with workspace context.
@@ -82,16 +100,7 @@ def get_plane_client_context() -> PlaneClientContext:
         else:
             access_token = token
 
-    if access_token:
-        client = PlaneClient(
-            base_url=base_url,
-            access_token=access_token,
-        )
-    else:
-        client = PlaneClient(
-            base_url=base_url,
-            api_key=api_key,
-        )
+    client = _client_for(base_url, "" if access_token else api_key, access_token or "")
 
     return PlaneClientContext(
         client=client,

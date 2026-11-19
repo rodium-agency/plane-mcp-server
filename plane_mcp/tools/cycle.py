@@ -21,6 +21,7 @@ from pydantic import Field
 from plane_mcp.client import get_plane_client_context
 from plane_mcp.pql_reference import PQL_FIELD_HINT
 from plane_mcp.toolkit import (
+    LIST_FIELDS_HINT,
     Action,
     build_annotations,
     build_description,
@@ -56,6 +57,7 @@ ACTIONS = (
         "list_workitems",
         ("project_id", "cycle_id"),
         ("pql", "order_by", "cursor", "per_page", "expand", "fields"),
+        note=LIST_FIELDS_HINT,
         read=True,
     ),
     Action(

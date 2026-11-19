@@ -17,6 +17,7 @@ The modules split by *when* they act:
     paging      response time -- Plane's pagination envelope and PQL failures
     governance  refusal time -- recognise a workspace-owned resource, read its flag
     transforms  listing time -- reshape the advertised catalogue
+    compact     result time -- drop nulls and binary blobs from what a tool returns
 
 Names are re-exported here so a resource module needs one import, not four. The
 submodules stay importable for callers that want to be explicit.
@@ -24,6 +25,7 @@ submodules stay importable for callers that want to be explicit.
 
 from __future__ import annotations
 
+from plane_mcp.toolkit.compact import compact, requested_fields
 from plane_mcp.toolkit.governance import (
     WORK_ITEM_TYPES,
     migration_in_progress,
@@ -42,7 +44,14 @@ from plane_mcp.toolkit.mentions import (
     tokenize_mentions,
     unmentionable,
 )
-from plane_mcp.toolkit.paging import dump_results, envelope, pql_failure, workitem_page
+from plane_mcp.toolkit.paging import (
+    LIST_FIELDS_HINT,
+    dump_results,
+    envelope,
+    pql_failure,
+    workitem_list_fields,
+    workitem_page,
+)
 from plane_mcp.toolkit.runtime import (
     as_params,
     coerce_list,
@@ -61,18 +70,21 @@ from plane_mcp.toolkit.spec import (
     build_annotations,
     build_description,
 )
-from plane_mcp.toolkit.transforms import StripOutputSchemas
+from plane_mcp.toolkit.transforms import StripEmptyDefaults, StripOutputSchemas
 
 __all__ = [
+    "LIST_FIELDS_HINT",
     "MENTION_TOKEN",
     "WORK_ITEM_TYPES",
     "Action",
+    "StripEmptyDefaults",
     "StripOutputSchemas",
     "action_names",
     "as_params",
     "build_annotations",
     "build_description",
     "coerce_list",
+    "compact",
     "dump_results",
     "envelope",
     "ids_of",
@@ -91,10 +103,12 @@ __all__ = [
     "pql_failure",
     "render_mentions",
     "require",
+    "requested_fields",
     "scoped",
     "tokenize_mentions",
     "unmentionable",
     "workspace_owns",
     "workspace_owns_resource",
+    "workitem_list_fields",
     "workitem_page",
 ]

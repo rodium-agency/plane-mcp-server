@@ -90,3 +90,46 @@ def test_a_token_without_a_slug_does_not_borrow_the_environments(connected, monk
 
     assert current_workspace()["slug"] == ""
     assert get_plane_client_context().workspace_slug == ""
+
+
+@pytest.fixture
+def fresh_clients():
+    client_module._client_for.cache_clear()
+    yield
+    client_module._client_for.cache_clear()
+
+
+@pytest.mark.parametrize("kind", ["oauth", "header", "stdio"])
+def test_a_connection_reuses_its_client_across_calls(kind, connected, fresh_clients):
+    """PLANE-19: a client per call threw away its pooled HTTP connections, so every
+    tool call paid a fresh TCP and TLS handshake to the Plane API."""
+    connected(kind)
+
+    assert get_plane_client_context().client is get_plane_client_context().client
+
+
+def test_different_credentials_never_share_a_client(monkeypatch, fresh_clients):
+    monkeypatch.setenv("PLANE_WORKSPACE_SLUG", "acme")
+    monkeypatch.setattr(client_module, "get_access_token", lambda: _token(auth_method="oauth"))
+    first = get_plane_client_context().client
+
+    other = AccessToken(token="other", client_id="c", scopes=[], expires_at=None, claims={"auth_method": "oauth"})
+    monkeypatch.setattr(client_module, "get_access_token", lambda: other)
+    second = get_plane_client_context().client
+
+    assert first is not second
+    assert first.config.access_token == "t"
+    assert second.config.access_token == "other"
+
+
+def test_the_same_secret_as_key_and_as_token_are_different_clients(monkeypatch, fresh_clients):
+    """An API key and an OAuth token are sent in different headers; one must not
+    be served the client built for the other."""
+    monkeypatch.setenv("PLANE_WORKSPACE_SLUG", "acme")
+    monkeypatch.setattr(client_module, "get_access_token", lambda: _token(auth_method="api_key_header"))
+    as_key = get_plane_client_context().client
+    monkeypatch.setattr(client_module, "get_access_token", lambda: _token(auth_method="oauth"))
+    as_token = get_plane_client_context().client
+
+    assert as_key.config.api_key == "t" and not as_key.config.access_token
+    assert as_token.config.access_token == "t" and not as_token.config.api_key
